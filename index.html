@@ -1723,7 +1723,7 @@ function updateLessonAction() {
   } else if (ALLOW_EXTRA_LESSON) {
     btn.disabled = false;
     btn.innerHTML = `Пройти ещё урок: ${subject.name} <span class="spark">⚡</span>`;
-    hint.innerHTML = `Это <b>дополнительный урок</b>: XP и звёзды будут, а бонус-игра — нет.`;
+    hint.innerHTML = `Это <b>дополнительный урок</b>: XP, звёзды и новая бонус-игра после него.`;
   } else {
     btn.disabled = true;
     hint.textContent = "На сегодня урок уже пройден. Возвращайся завтра!";
@@ -1755,17 +1755,22 @@ function renderHome() {
   if (day.lessonDone) {
     const subject = SUBJECTS[day.lessonDone];
     const bonusLabel = day.bonusPlayed ? "Сыграть ещё" : "Забрать награду";
+    const extraNote = day.extraLessons.length ? ` Сегодня дополнительных уроков: ${day.extraLessons.length}.` : "";
     banner.innerHTML = `<div class="done-banner">
-      <div class="db-left"><span class="db-emoji">${subject.emoji}</span><div><h3>Урок дня пройден: ${subject.name} ✅</h3><p>${day.bonusUnlocked ? "Награда открыта!" : "Награда скоро появится."} ${ALLOW_EXTRA_LESSON ? "Можно пройти ещё один урок, но без бонус-игры." : ""}</p></div></div>
+      <div class="db-left"><span class="db-emoji">${subject.emoji}</span><div><h3>Урок дня пройден: ${subject.name} ✅</h3><p>${day.bonusUnlocked ? "Награда открыта!" : "Награда скоро появится."}${extraNote} ${ALLOW_EXTRA_LESSON ? "Можно пройти ещё урок — бонус-игра будет после каждого." : ""}</p></div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn green small" data-action="open-bonus" type="button">${bonusLabel} 🎁</button><button class="btn secondary small" data-action="progress" type="button">Успехи</button></div>
     </div>`;
   } else {
     banner.innerHTML = "";
   }
   $("#lessonIntro").textContent = day.lessonDone
-    ? "Урок дня уже пройден. Хочешь ещё? Выбери дополнительный урок — бонус-игры сегодня больше не будет."
+    ? ALLOW_EXTRA_LESSON
+      ? "Урок дня уже пройден. Можно выбрать ещё один — после каждого урока открывается новая бонус-игра."
+      : "Урок дня уже пройден. Возвращайся завтра за новым уроком!"
     : "Один урок в день — выбирай то, что хочется больше всего.";
-  $("#lessonModeBadge").textContent = day.lessonDone ? "доп. урок без бонуса" : "1 урок в день";
+  $("#lessonModeBadge").textContent = day.lessonDone
+    ? (ALLOW_EXTRA_LESSON ? "доп. урок + бонус" : "на сегодня всё")
+    : "урок + бонус";
   renderSubjectCards();
   updateLessonAction();
   $("#homeSkillGrid").innerHTML = renderSkillMiniCards();
@@ -2023,11 +2028,12 @@ function finishLesson() {
   const wasDaily = !day.lessonDone;
   if (wasDaily) {
     day.lessonDone = lesson.subject;
-    day.bonusUnlocked = true;
     updateStreak();
   } else {
     day.extraLessons.push(lesson.subject);
   }
+  day.bonusUnlocked = true;
+  day.bonusPlayed = false;
   state.totalLessons += 1;
   const historyEntry = {
     date: todayKey(), subject: lesson.subject, correct: lesson.earnedStars,
@@ -2063,9 +2069,7 @@ function renderResult(result) {
     const meta = SKILLS_META[item.subject];
     return `<span class="levelup-pill">${meta.icon} ${meta.name}: уровень ${item.level}</span>`;
   }).join("");
-  const bonusBlock = result.isDaily
-    ? `<button class="btn big green" data-result-action="bonus" type="button">Забрать награду 🎁</button>`
-    : `<div class="feedback good" style="justify-content:center;text-align:left"><span class="fb-icon">🎁</span><div><b>Это дополнительный урок</b><p>Бонус-игра открывается за первый урок дня, а этот урок прокачал навык — тоже отлично!</p></div></div>`;
+  const bonusBlock = `<button class="btn big green" data-result-action="bonus" type="button">Забрать награду 🎁</button>`;
   $("#resultCard").innerHTML = `
     <div class="misha-figure" data-misha data-anim="happy"><img class="misha-img is-visible" src="${MISHA_SPRITES.happy}" alt="Миша радуется"></div>
     <span class="eyebrow mint">Урок завершён</span>
@@ -2172,7 +2176,7 @@ function renderBonusScreen() {
   $("#playBonusBtn").innerHTML = `Играть: ${GAMES_META[currentBonus].name} <span class="spark">🎮</span>`;
   $("#playBonusBtn").disabled = false;
   const note = $(".bonus-note");
-  if (note) note.textContent = day.bonusPlayed ? "🏁 Сегодня ты уже играл — можно ещё раз, просто для веселья!" : "⚡ XP и звёзды здесь не растут — просто веселимся!";
+  if (note) note.textContent = day.bonusPlayed ? "🏁 Награда за этот урок уже сыграна — можно ещё раз, просто для веселья!" : "🎁 Бонус за пройденный урок! XP и звёзды здесь не растут.";
 }
 function chooseBonusGame(id) {
   if (!BONUS_GAMES.includes(id)) return;
